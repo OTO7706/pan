@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard de Participación — Padrón R-7</title>
+<style>
+  :root{
+    --navy:#1F3864; --blue:#2E5395; --lightblue:#E6EDF8;
+    --amber:#D4A017; --amberlight:#FBF1D9;
+    --green:#2F855A; --greenlight:#E6F4EC;
+    --red:#B3261E; --redlight:#FBEAE9;
+    --gray:#5F5E5A; --line:#DADCE3; --bg:#F5F6FA; --card:#FFFFFF;
+    --ink:#1A1A2E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    background:var(--bg); color:var(--ink);
+  }
+  header{
+    background:var(--navy); color:#fff; padding:22px 32px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{margin:0; font-size:20px; font-weight:600; letter-spacing:.2px;}
+  header p{margin:4px 0 0; font-size:12.5px; color:#C7D3E8;}
+  .live{display:flex; align-items:center; gap:8px; font-size:12px; color:#C7D3E8;}
+  .live .dot{width:9px; height:9px; border-radius:50%; background:#5F7BB0; transition:background .2s;}
+  .live .dot.on{background:#38C172; box-shadow:0 0 0 3px rgba(56,193,114,.25);}
+  .live .dot.err{background:var(--red); box-shadow:0 0 0 3px rgba(179,38,30,.25);}
+
+  main{padding:24px 32px 60px; max-width:1280px; margin:0 auto;}
+
+  .uploadbar{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:16px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .uploadbar .txt{flex:1; min-width:260px;}
+  .uploadbar .txt b{display:block; font-size:14px; margin-bottom:2px;}
+  .uploadbar .txt span{font-size:12.5px; color:var(--gray);}
+  .btn{
+    background:var(--navy); color:#fff; border:none; padding:10px 18px;
+    border-radius:7px; font-size:13.5px; cursor:pointer; font-weight:600;
+  }
+  .btn:hover{background:var(--blue);}
+  .btn.secondary{background:#fff; color:var(--navy); border:1px solid var(--navy);}
+  .btn.small{padding:7px 12px; font-size:12.5px;}
+  #fileInput{display:none;}
+  #fileStatus{font-size:12px; color:var(--green); margin-top:4px; display:none;}
+
+  .sheetbar{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:16px 20px; margin-bottom:22px;
+  }
+  .sheetbar .row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;}
+  .sheetbar .f{display:flex; flex-direction:column; gap:5px; flex:1; min-width:260px;}
+  .sheetbar label{font-size:11.5px; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.3px;}
+  .sheetbar input[type=text]{padding:9px 10px; border:1px solid var(--line); border-radius:6px; font-size:13.5px;}
+  .sheetbar .help{font-size:12px; color:var(--gray); margin-top:10px; line-height:1.5;}
+  .sheetbar .help a{color:var(--blue); text-decoration:none;}
+  .sheetbar .help ol{margin:6px 0 0; padding-left:20px;}
+  .sheetstatus{font-size:12.5px; margin-top:10px; display:none; padding:8px 12px; border-radius:6px;}
+  .sheetstatus.ok{display:block; background:var(--greenlight); color:var(--green);}
+  .sheetstatus.err{display:block; background:var(--redlight); color:var(--red);}
+  details.howto{margin-top:4px;}
+  details.howto summary{cursor:pointer; font-size:12.5px; color:var(--blue); font-weight:600;}
+
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:22px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px;}
+  .kpi .lbl{font-size:12px; color:var(--gray); font-weight:600; text-transform:uppercase; letter-spacing:.4px;}
+  .kpi .val{font-size:30px; font-weight:700; color:var(--navy); margin-top:6px;}
+  .kpi.pct .val{color:var(--amber);}
+  .kpi .bar{height:6px; background:var(--lightblue); border-radius:3px; margin-top:10px; overflow:hidden;}
+  .kpi .bar i{display:block; height:100%; background:var(--amber); transition:width .4s;}
+
+  .filters{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:16px 20px; margin-bottom:22px; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;
+  }
+  .filters .f{display:flex; flex-direction:column; gap:5px; min-width:170px; flex:1;}
+  .filters label{font-size:11.5px; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.3px;}
+  .filters select, .filters input[type=text]{
+    padding:8px 10px; border:1px solid var(--line); border-radius:6px; font-size:13.5px; background:#fff;
+  }
+  .filters .clear{align-self:flex-end;}
+
+  .tabs{display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;}
+  .tab{
+    padding:8px 16px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer;
+    background:#fff; border:1px solid var(--line); color:var(--navy);
+  }
+  .tab.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+  .chartwrap{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin-bottom:22px;}
+  .chartwrap h3{margin:0 0 4px; font-size:14px; color:var(--navy);}
+  .chartwrap .sub{font-size:12px; color:var(--gray); margin-bottom:12px;}
+  .chart-outer{position:relative; width:100%;}
+  .legend{display:flex; gap:18px; font-size:12px; color:var(--gray); margin-top:10px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:11px; height:11px; border-radius:2px; display:inline-block;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:8px 10px; text-align:left; border-bottom:1px solid var(--line);}
+  th{background:var(--lightblue); color:var(--navy); font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.2px; position:sticky; top:0;}
+  tbody tr:hover{background:#FAFBFE;}
+  .tag{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:700;}
+  .tag.yes{background:var(--greenlight); color:var(--green);}
+  .tag.no{background:#F1F1EE; color:var(--gray);}
+  .empty{padding:60px 20px; text-align:center; color:var(--gray);}
+  .empty b{display:block; color:var(--navy); font-size:16px; margin-bottom:6px;}
+  .modal-bg{position:fixed; inset:0; background:rgba(26,26,46,.55); display:none; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .modal-bg.open{display:flex;}
+  .modal{background:#fff; border-radius:12px; max-width:520px; width:100%; padding:22px 24px; box-shadow:0 20px 50px rgba(0,0,0,.25);}
+  .modal h3{margin:0 0 6px; color:var(--navy); font-size:17px;}
+  .modal p{margin:0 0 14px; font-size:13px; color:var(--gray); line-height:1.5;}
+  .modal .linkrow{display:flex; gap:8px;}
+  .modal .linkrow input{flex:1; min-width:0; padding:9px 10px; border:1px solid var(--line); border-radius:6px; font-size:12.5px; background:var(--bg);}
+  .modal .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; justify-content:flex-end;}
+  .modal .copied{font-size:12px; color:var(--green); margin-top:8px; min-height:16px;}
+  .modal .scoperow{display:flex; flex-direction:column; gap:5px; margin-bottom:14px;}
+  .modal .scoperow label{font-size:11.5px; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.3px;}
+  .modal .scoperow select{padding:9px 10px; border:1px solid var(--line); border-radius:6px; font-size:13.5px; background:#fff;}
+  .badge-monitor{background:var(--amber); color:var(--navy); font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.3px;}
+  .headright{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  .btn.share{background:var(--amber); color:var(--navy);}
+  .btn.share:hover{background:#E5B42A;}
+  body.monitor .sheetbar, body.monitor .uploadbar{display:none;}
+  .typecharts{display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:22px;}
+  .typecharts .chartwrap{margin-bottom:0;}
+  @media (max-width:520px){ .typecharts{grid-template-columns:1fr;} }
+  .namebar{align-items:center;}
+  .namebar .f{flex:0 1 280px;}
+  .namebar .help{flex:1; min-width:220px; font-size:12.5px; color:var(--gray);}
+  .nodata{position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:13px; color:var(--gray);}
+  .count{font-size:12px; color:var(--gray); margin:10px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Dashboard de participación — Padrón PAN R-7</h1>
+    <p id="subtitle">Conecta tu Google Sheet para ver los datos actualizarse solos</p>
+  </div>
+  <div class="headright">
+    <span class="badge-monitor" id="monitorBadge" style="display:none;">Solo monitoreo</span>
+    <div class="live" id="liveIndicator" style="display:none;">
+      <div class="dot" id="liveDot"></div>
+      <span id="liveText">Sin conexión</span>
+    </div>
+    <button class="btn share small" id="shareBtn" onclick="openShare()" style="display:none;">Compartir enlace de monitoreo</button>
+  </div>
+</header>
+
+<div class="modal-bg" id="shareModal" onclick="if(event.target===this) closeShare()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <h3 id="shareTitle">Compartir para monitorear</h3>
+    <p>Quien abra este enlace verá el dashboard conectado a tu Google Sheet y actualizándose solo, sin tener que pegar ni conectar nada. Es de solo lectura: no ve el enlace de la hoja ni las opciones de conexión.</p>
+    <div class="scoperow">
+      <label for="shareScope">¿Qué va a ver quien reciba el enlace?</label>
+      <select id="shareScope" onchange="updateShareLink()">
+        <option value="">General (todas las localidades)</option>
+      </select>
+    </div>
+    <div class="linkrow">
+      <input type="text" id="shareLink" readonly onclick="this.select()">
+      <button class="btn small" onclick="copyShare()">Copiar</button>
+    </div>
+    <div class="copied" id="copiedMsg"></div>
+    <div class="actions">
+      <a class="btn secondary small" id="waShare" target="_blank" rel="noopener" style="text-decoration:none;">Enviar por WhatsApp</a>
+      <button class="btn secondary small" id="nativeShare" onclick="nativeShare()" style="display:none;">Compartir…</button>
+      <button class="btn small" onclick="window.open(document.getElementById('shareLink').value,'_blank')">Abrir en otra pantalla</button>
+      <button class="btn secondary small" onclick="closeShare()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <div class="sheetbar">
+    <div class="row">
+      <div class="f">
+        <label>Enlace de Google Sheets (publicado)</label>
+        <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/TU_ID/edit#gid=0">
+      </div>
+      <button class="btn" id="connectBtn" onclick="connectSheet()">Conectar</button>
+      <button class="btn secondary" id="disconnectBtn" onclick="disconnectSheet()" style="display:none;">Desconectar</button>
+    </div>
+    <div class="sheetstatus" id="sheetStatus"></div>
+    <details class="howto">
+      <summary>¿Cómo conecto mi Excel a este dashboard en tiempo real?</summary>
+      <div class="help">
+        Para que el dashboard se actualice solo, mientras mueves los datos, la hoja debe vivir en Google Sheets (así cualquier persona con el enlace de solo lectura puede ver los cambios sin que tú tengas que subir nada de nuevo).
+        <ol>
+          <li>Abre tu Excel <b>PADRÓN_PAN_2024_-_BINGO_R-7.xlsx</b> y sube la hoja "1" a Google Sheets: en Google Drive → Nuevo → Subir archivo, luego ábrela con Google Sheets.</li>
+          <li>En Google Sheets ve a <b>Archivo → Compartir → Publicar en la Web</b>, elige la hoja correcta y el formato <b>CSV</b>, y da clic en Publicar.</li>
+          <li>Copia el enlace que te da Google (termina en <code>output=csv</code>) o simplemente pega aquí el enlace normal de edición de la hoja — el dashboard lo convierte solo.</li>
+          <li>Pégalo arriba y da clic en <b>Conectar</b>. A partir de ahí, cada vez que edites y guardes la hoja en Google Sheets, este dashboard se refresca solo cada 10 segundos.</li>
+        </ol>
+        Columnas esperadas: <b>No., Nombre, Participó, Localidad, Sección Electoral, Tipo</b>.
+      </div>
+    </details>
+  </div>
+
+  <div class="uploadbar">
+    <div class="txt">
+      <b>O cargar un CSV una sola vez</b>
+      <span>Si no quieres usar Google Sheets, exporta tu Excel a CSV y súbelo aquí (esta vista no se actualizará solo).</span>
+      <div id="fileStatus"></div>
+    </div>
+    <button class="btn secondary" onclick="document.getElementById('fileInput').click()">Subir CSV</button>
+    <input type="file" id="fileInput" accept=".csv">
+    <button class="btn secondary" onclick="loadDemo()">Ver con datos de ejemplo</button>
+  </div>
+
+  <div id="app" style="display:none;">
+
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">Registrados</div><div class="val" id="kpiTotal">0</div></div>
+      <div class="kpi"><div class="lbl">Participaron</div><div class="val" id="kpiPart">0</div></div>
+      <div class="kpi pct">
+        <div class="lbl">% de participación</div><div class="val" id="kpiPct">0%</div>
+        <div class="bar"><i id="kpiBar" style="width:0%"></i></div>
+      </div>
+      <div class="kpi"><div class="lbl">Pendientes</div><div class="val" id="kpiPend">0</div></div>
+    </div>
+
+    <div class="filters">
+      <div class="f">
+        <label>Localidad</label>
+        <select id="fLoc"><option value="">Todas</option></select>
+      </div>
+      <div class="f">
+        <label>Sección electoral</label>
+        <select id="fSec"><option value="">Todas</option></select>
+      </div>
+      <div class="f">
+        <label>Tipo</label>
+        <select id="fTipo"><option value="">Todos</option></select>
+      </div>
+      <button class="btn secondary clear" onclick="clearFilters()">Limpiar filtros</button>
+    </div>
+
+    <div class="chartwrap">
+      <h3>Participación por categoría</h3>
+      <div class="sub">Registrados vs. participaron — se recalcula al elegir un filtro arriba</div>
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-dim="localidad">Localidad</div>
+        <div class="tab" data-dim="seccion">Sección electoral</div>
+        <div class="tab" data-dim="tipo">Tipo</div>
+      </div>
+      <div class="chart-outer" style="height:340px;">
+        <canvas id="catChart" role="img" aria-label="Gráfica de barras de registrados y participaron por categoría"></canvas>
+      </div>
+      <div class="legend">
+        <span><i style="background:#2E5395"></i>Registrados</span>
+        <span><i style="background:#D4A017"></i>Participaron</span>
+      </div>
+    </div>
+
+    <div class="filters namebar">
+      <div class="f">
+        <label>Localidad para las gráficas por nombre</label>
+        <select id="fLocNames"><option value="">Todas</option></select>
+      </div>
+      <div class="help">Cada barra es un promotor o movilizador: cuántas personas trae a su cargo y cuántas de ellas participaron.</div>
+    </div>
+
+    <div class="typecharts">
+      <div class="chartwrap">
+        <h3>Por promotor</h3>
+        <div class="sub" id="subPromotor"></div>
+        <div class="chart-outer" id="outerPromotor" style="height:300px;">
+          <canvas id="promotorChart" role="img" aria-label="Gráfica de registrados y participaron de promotores"></canvas>
+          <div class="nodata" id="nodataPromotor">No hay personas con promotor asignado con este filtro</div>
+        </div>
+        <div class="legend">
+          <span><i style="background:#2E5395"></i>Personas a su cargo</span>
+          <span><i style="background:#D4A017"></i>Participaron</span>
+        </div>
+      </div>
+      <div class="chartwrap">
+        <h3>Por movilizador</h3>
+        <div class="sub" id="subMovilizador"></div>
+        <div class="chart-outer" id="outerMovilizador" style="height:300px;">
+          <canvas id="movilizadorChart" role="img" aria-label="Gráfica de registrados y participaron de movilizadores"></canvas>
+          <div class="nodata" id="nodataMovilizador">No hay personas con movilizador asignado con este filtro</div>
+        </div>
+        <div class="legend">
+          <span><i style="background:#2E5395"></i>Personas a su cargo</span>
+          <span><i style="background:#D4A017"></i>Participaron</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="count">
+      <span id="lastUpdated" style="color:var(--gray);"></span>
+    </div>
+
+  </div>
+
+  <div class="empty" id="emptyState">
+    <b>Aún no hay datos cargados</b>
+    Conecta tu Google Sheet, sube un CSV, o prueba primero con datos de ejemplo.
+  </div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let ROWS = [];
+let chart = null;
+const typeCharts = {};
+let currentDim = 'localidad';
+let pollTimer = null;
+const POLL_MS = 10000;
+const STORAGE_KEY = 'padron_sheet_url';
+let MONITOR = false;
+let currentSheetRaw = null;
+let LOCK_LOC = ''; // si el enlace de monitoreo es de una localidad, aquí queda su nombre
+
+// Anti-parpadeo: recordamos la última lectura para no redibujar si nada cambió
+let lastText = null;       // último CSV recibido
+let hasLoaded = false;     // ya hubo al menos una lectura correcta
+let failCount = 0;         // fallos de red consecutivos
+const MAX_SOFT_FAILS = 3;  // cuántos fallos seguidos antes de mostrar error
+let lastStatusKind = null; // para no reescribir el mismo estado
+let lastLiveState = null;
+
+function esc(v){
+  return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Encode/decode the sheet link for the share URL (base64url, keeps the URL tidy)
+function encodeSheet(raw){
+  const b = btoa(unescape(encodeURIComponent(raw)));
+  return b.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeSheet(code){
+  try{
+    let b = code.replace(/-/g,'+').replace(/_/g,'/');
+    while(b.length % 4) b += '=';
+    return decodeURIComponent(escape(atob(b)));
+  }catch(e){ return null; }
+}
+
+function norm(v){ return (v===undefined||v===null) ? '' : String(v).trim(); }
+function isYes(v){
+  const s = norm(v).toLowerCase();
+  return s==='1' || s==='si' || s==='sí' || s==='true' || s==='x';
+}
+
+function pickCol(headers, candidates){
+  const low = headers.map(h=>norm(h).toLowerCase());
+  for(const c of candidates){
+    const idx = low.findIndex(h=>h.includes(c));
+    if(idx>=0) return headers[idx];
+  }
+  return null;
+}
+
+function ingest(data, headers){
+  const colNo = pickCol(headers,['no.','numero','número','num']);
+  const colName = pickCol(headers,['nombre']);
+  const colPart = pickCol(headers,['particip','voto']);
+  const colLoc = pickCol(headers,['localidad']);
+  const colSec = pickCol(headers,['secci']);
+  const colTipo = pickCol(headers,['tipo']);
+  const colProm = pickCol(headers,['promotor actual','promotor']);
+  const colMov = pickCol(headers,['movilizador actual','movilizador']);
+
+  ROWS = data
+    .filter(r => norm(r[colName]) !== '')
+    .map(r => ({
+      no: norm(r[colNo]),
+      nombre: norm(r[colName]),
+      participo: isYes(r[colPart]),
+      localidad: norm(r[colLoc]),
+      seccion: norm(r[colSec]),
+      tipo: norm(r[colTipo]),
+      promotor: norm(r[colProm]),
+      movilizador: norm(r[colMov]),
+    }));
+
+  // Enlace de una sola localidad: solo se conservan sus filas
+  if(LOCK_LOC){
+    const want = LOCK_LOC.toLowerCase();
+    ROWS = ROWS.filter(r => r.localidad.toLowerCase() === want);
+    if(ROWS.length === 0){
+      document.getElementById('emptyState').innerHTML =
+        '<b>Sin datos para “' + esc(LOCK_LOC) + '”</b>No hay personas registradas en esa localidad en la hoja. Pide a quien te envió el enlace que lo revise.';
+    }
+  }
+  render();
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  disconnectSheet();
+  Papa.parse(file, {
+    header:true, skipEmptyLines:true,
+    complete: function(res){
+      ingest(res.data, res.meta.fields);
+      const st = document.getElementById('fileStatus');
+      st.style.display='block';
+      st.textContent = 'Cargado: ' + file.name;
+      document.getElementById('subtitle').textContent = 'Datos de: ' + file.name;
+    }
+  });
+});
+
+function loadDemo(){
+  disconnectSheet();
+  const locs=['Centro','San Francisco','La Loma','El Mirador','Jesús del Monte'];
+  const secs=['0501','0502','0503','0504'];
+  const nombres=['Juan Pérez García','María López Ruiz','Carlos Sánchez Torres','Ana Martínez Díaz','Luis Ramírez Ortiz'];
+  const proms=['Rosa Hernández','Pedro Gómez','Laura Castillo','Miguel Ángel Ruiz','Sofía Morales'];
+  const movs=['José Luna','Carmen Vega','Raúl Ortega','Patricia Soto','Jorge Medina','Elena Ríos','Andrés Cruz','Lucía Navarro','Fernando Rojas','Teresa Silva'];
+  const demo=[];
+  for(let i=1;i<=180;i++){
+    const m = (i*7)%movs.length;
+    const loc = i%locs.length;
+    demo.push({
+      no:i,
+      nombre: nombres[i%nombres.length]+' '+i,
+      participo: Math.random()<0.35,
+      localidad: locs[loc],
+      seccion: secs[i%secs.length],
+      tipo: 'Movilizado',
+      promotor: proms[(loc + (m%2)) % proms.length],
+      movilizador: movs[m],
+    });
+  }
+  ROWS = demo;
+  document.getElementById('fileStatus').style.display='block';
+  document.getElementById('fileStatus').textContent='Usando datos de ejemplo (no son datos reales).';
+  document.getElementById('subtitle').textContent='Vista previa con datos de ejemplo';
+  render();
+}
+
+// --- Google Sheets live connection ---
+
+function sheetUrlToCsvUrl(input){
+  const url = norm(input);
+  if(!url) return null;
+  if(/output=csv/.test(url)) return url;
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if(!m) return null;
+  const id = m[1];
+  const gidMatch = url.match(/[#&?]gid=(\d+)/);
+  const gid = gidMatch ? gidMatch[1] : '0';
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+}
+
+function setSheetStatus(kind, msg){
+  const el = document.getElementById('sheetStatus');
+  const cls = 'sheetstatus ' + kind;
+  if(el.className !== cls) el.className = cls;
+  if(el.textContent !== msg) el.textContent = msg;
+}
+
+function setLive(state){
+  if(state === lastLiveState) return; // sin cambios, no tocar el DOM
+  lastLiveState = state;
+  const ind = document.getElementById('liveIndicator');
+  const dot = document.getElementById('liveDot');
+  const text = document.getElementById('liveText');
+  ind.style.display = 'flex';
+  dot.className = 'dot' + (state==='ok' ? ' on' : state==='err' ? ' err' : '');
+  text.textContent = state==='ok' ? 'Conectado — se actualiza solo' : state==='err' ? 'Error de conexión' : 'Conectando...';
+}
+
+function connectSheet(){
+  const raw = document.getElementById('sheetUrl').value;
+  const csvUrl = sheetUrlToCsvUrl(raw);
+  if(!csvUrl){
+    setSheetStatus('err', 'No se reconoce ese enlace. Pega el enlace normal de Google Sheets (con /spreadsheets/d/...) o el de "Publicar en la Web" con output=csv.');
+    return;
+  }
+  currentSheetRaw = raw;
+  lastText = null;
+  hasLoaded = false;
+  failCount = 0;
+  lastLiveState = null;
+  if(!MONITOR){
+    localStorage.setItem(STORAGE_KEY, raw);
+    document.getElementById('shareBtn').style.display = 'inline-block';
+  }
+  document.getElementById('connectBtn').textContent = 'Reconectar';
+  document.getElementById('disconnectBtn').style.display = 'inline-block';
+  setSheetStatus('ok', 'Conectando con tu Google Sheet...');
+  startPolling(csvUrl);
+}
+
+function disconnectSheet(){
+  if(pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+  if(MONITOR) return;
+  currentSheetRaw = null;
+  lastText = null;
+  hasLoaded = false;
+  lastLiveState = null;
+  document.getElementById('shareBtn').style.display = 'none';
+  localStorage.removeItem(STORAGE_KEY);
+  document.getElementById('liveIndicator').style.display = 'none';
+  document.getElementById('disconnectBtn').style.display = 'none';
+  document.getElementById('connectBtn').textContent = 'Conectar';
+}
+
+function startPolling(csvUrl){
+  if(pollTimer) clearInterval(pollTimer);
+  fetchSheet(csvUrl);
+  pollTimer = setInterval(() => fetchSheet(csvUrl), POLL_MS);
+}
+
+function fetchSheet(csvUrl){
+  // Solo mostramos "Conectando..." en la primera lectura, no en cada refresco
+  if(!hasLoaded) setLive('connecting');
+  const bust = csvUrl + (csvUrl.includes('?') ? '&' : '?') + '_=' + new Date().getTime();
+  fetch(bust, { cache: 'no-store' })
+    .then(res => {
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(text => {
+      failCount = 0;
+      hasLoaded = true;
+      // Solo redibujamos si el contenido de la hoja realmente cambió
+      if(text !== lastText){
+        lastText = text;
+        const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+        ingest(parsed.data, parsed.meta.fields);
+      }
+      const t = new Date().toLocaleTimeString('es-MX');
+      setSheetStatus('ok', 'Conectado. Última lectura: ' + t);
+      const sub = document.getElementById('subtitle');
+      const liveSub = LOCK_LOC ? 'Localidad: ' + LOCK_LOC + ' · datos en vivo desde Google Sheets' : 'Datos en vivo desde Google Sheets';
+      if(sub.textContent !== liveSub) sub.textContent = liveSub;
+      document.getElementById('lastUpdated').textContent = 'Última actualización: ' + t;
+      setLive('ok');
+    })
+    .catch(err => {
+      failCount++;
+      // Un fallo aislado no debe mover nada en pantalla: se mantiene lo que ya se ve
+      if(failCount >= MAX_SOFT_FAILS || !hasLoaded){
+        setSheetStatus('err', 'No se pudo leer la hoja (' + err.message + '). Revisa que esté publicada y sea de lectura pública.');
+        setLive('err');
+        if(MONITOR) document.getElementById('subtitle').textContent = 'No se pudo leer la hoja — reintentando cada 10 segundos';
+      }
+    });
+}
+
+window.addEventListener('load', () => {
+  // Monitor link: ?ver=<code> connects automatically in read-only mode
+  const code = new URLSearchParams(location.search).get('ver');
+  if(code){
+    const raw = decodeSheet(code);
+    if(raw && sheetUrlToCsvUrl(raw)){
+      MONITOR = true;
+      document.body.classList.add('monitor');
+      document.getElementById('monitorBadge').style.display = 'inline-block';
+
+      // Enlace por localidad: ?ver=...&loc=Hielo
+      LOCK_LOC = norm(new URLSearchParams(location.search).get('loc'));
+      if(LOCK_LOC){
+        document.getElementById('monitorBadge').textContent = 'Solo monitoreo · ' + LOCK_LOC;
+        document.title = 'Dashboard — ' + LOCK_LOC;
+        // Ya no tiene sentido elegir localidad: se ocultan sus filtros y la pestaña
+        document.getElementById('fLoc').closest('.f').style.display = 'none';
+        document.getElementById('fLocNames').closest('.filters').style.display = 'none';
+        const tabLoc = document.querySelector('.tab[data-dim="localidad"]');
+        if(tabLoc) tabLoc.style.display = 'none';
+        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+        document.querySelector('.tab[data-dim="seccion"]').classList.add('active');
+        currentDim = 'seccion';
+      }
+      document.getElementById('subtitle').textContent = 'Conectando…';
+      document.getElementById('emptyState').innerHTML = '<b>Cargando datos…</b>Conectando con la hoja compartida.';
+      document.getElementById('sheetUrl').value = raw;
+      connectSheet();
+      return;
+    }
+    document.getElementById('emptyState').innerHTML = '<b>Enlace de monitoreo no válido</b>Pide a quien te lo envió que genere uno nuevo con el botón “Compartir”.';
+  }
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    document.getElementById('sheetUrl').value = saved;
+    connectSheet();
+  }
+});
+
+// --- Share window ---
+
+function buildShareLink(){
+  let link = location.origin + location.pathname + '?ver=' + encodeSheet(currentSheetRaw);
+  const loc = document.getElementById('shareScope').value;
+  if(loc) link += '&loc=' + encodeURIComponent(loc);
+  return link;
+}
+
+function updateShareLink(){
+  const link = buildShareLink();
+  const loc = document.getElementById('shareScope').value;
+  document.getElementById('shareLink').value = link;
+  document.getElementById('copiedMsg').textContent = '';
+  document.getElementById('waShare').href = 'https://wa.me/?text=' +
+    encodeURIComponent('Dashboard de participación en vivo' + (loc ? ' — ' + loc : '') + ' (solo monitoreo): ' + link);
+}
+
+function openShare(){
+  if(!currentSheetRaw) return;
+
+  // Llenar el selector con las localidades de la hoja (y cuántas personas tiene cada una)
+  const sel = document.getElementById('shareScope');
+  const previous = sel.value;
+  const counts = {};
+  ROWS.forEach(r => { if(r.localidad) counts[r.localidad] = (counts[r.localidad]||0) + 1; });
+  sel.innerHTML = '<option value="">General (todas las localidades)</option>';
+  Object.keys(counts).sort().forEach(name => {
+    const o = document.createElement('option');
+    o.value = name;
+    o.textContent = name + ' (' + counts[name].toLocaleString('es-MX') + ' personas)';
+    sel.appendChild(o);
+  });
+  if([...sel.options].some(o => o.value === previous)) sel.value = previous;
+
+  updateShareLink();
+  document.getElementById('nativeShare').style.display = navigator.share ? 'inline-block' : 'none';
+  document.getElementById('shareModal').classList.add('open');
+}
+
+function closeShare(){
+  document.getElementById('shareModal').classList.remove('open');
+}
+
+function copyShare(){
+  const input = document.getElementById('shareLink');
+  const done = () => { document.getElementById('copiedMsg').textContent = 'Enlace copiado. Ya puedes pegarlo y enviarlo.'; };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(input.value).then(done, () => { input.select(); document.execCommand('copy'); done(); });
+  } else {
+    input.select(); document.execCommand('copy'); done();
+  }
+}
+
+function nativeShare(){
+  navigator.share({
+    title: 'Dashboard de participación',
+    text: 'Dashboard de participación en vivo (solo monitoreo)',
+    url: document.getElementById('shareLink').value
+  }).catch(()=>{});
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeShare(); });
+
+// --- Filters / rendering ---
+
+// Reconstruye las opciones solo si la lista cambió (evita parpadeo en los selectores)
+function fillSelect(id, values){
+  const sel = document.getElementById(id);
+  const list = [...new Set(values)].filter(v=>v!=='').sort();
+  const sig = list.join('\u0001');
+  if(sel.dataset.sig === sig) return;
+  sel.dataset.sig = sig;
+  const current = sel.value;
+  sel.innerHTML = sel.options[0].outerHTML;
+  list.forEach(v=>{
+    const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
+  });
+  if([...sel.options].some(o=>o.value===current)) sel.value=current;
+}
+
+function setText(id, value){
+  const el = document.getElementById(id);
+  if(el.textContent !== value) el.textContent = value;
+}
+
+function getFiltered(){
+  const loc = document.getElementById('fLoc').value;
+  const sec = document.getElementById('fSec').value;
+  const tipo = document.getElementById('fTipo').value;
+  return ROWS.filter(r =>
+    (!loc || r.localidad===loc) &&
+    (!sec || r.seccion===sec) &&
+    (!tipo || r.tipo===tipo)
+  );
+}
+
+function clearFilters(){
+  document.getElementById('fLoc').value='';
+  document.getElementById('fSec').value='';
+  document.getElementById('fTipo').value='';
+  render();
+}
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    currentDim = t.dataset.dim;
+    render();
+  });
+});
+
+document.getElementById('fLocNames').addEventListener('change', e=>{
+  document.getElementById('fLoc').value = e.target.value;
+  render();
+});
+
+['fLoc','fSec','fTipo'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', render);
+});
+
+function setDisplay(id, value){
+  const el = document.getElementById(id);
+  if(el.style.display !== value) el.style.display = value;
+}
+
+function render(){
+  if(ROWS.length===0){
+    setDisplay('app','none');
+    setDisplay('emptyState','block');
+    return;
+  }
+  setDisplay('app','block');
+  setDisplay('emptyState','none');
+
+  fillSelect('fLoc', ROWS.map(r=>r.localidad));
+  fillSelect('fLocNames', ROWS.map(r=>r.localidad));
+  document.getElementById('fLocNames').value = document.getElementById('fLoc').value;
+  fillSelect('fSec', ROWS.map(r=>r.seccion));
+  fillSelect('fTipo', ROWS.map(r=>r.tipo));
+
+  const filtered = getFiltered();
+  const total = filtered.length;
+  const part = filtered.filter(r=>r.participo).length;
+  const pct = total ? Math.round((part/total)*1000)/10 : 0;
+
+  setText('kpiTotal', total.toLocaleString('es-MX'));
+  setText('kpiPart', part.toLocaleString('es-MX'));
+  setText('kpiPct', pct + '%');
+  document.getElementById('kpiBar').style.width = pct + '%';
+  setText('kpiPend', (total-part).toLocaleString('es-MX'));
+
+  chart = drawBars('catChart', chart, groupBy(filtered, currentDim));
+
+  // One bar per promotor / movilizador: people assigned to them and how many participated
+  const loc = document.getElementById('fLoc').value;
+  const where = loc ? 'en ' + loc : 'en todas las localidades';
+  [['Promotor','promotor'], ['Movilizador','movilizador']].forEach(([name, key]) => {
+    const rows = filtered.filter(r => r[key] && r[key] !== r.nombre);
+    const entries = groupBy(rows, key, true);
+    const p = rows.filter(r=>r.participo).length;
+    const pc = rows.length ? Math.round((p/rows.length)*1000)/10 : 0;
+    setText('sub'+name,
+      entries.length + ' ' + name.toLowerCase() + (entries.length===1 ? '' : 'es') + ' ' + where + ' · ' +
+      rows.length.toLocaleString('es-MX') + ' personas a cargo · ' + p.toLocaleString('es-MX') + ' participaron (' + pc + '%)');
+    setDisplay('nodata'+name, rows.length ? 'none' : 'flex');
+    const h = Math.max(240, entries.length*34 + 50) + 'px';
+    const outer = document.getElementById('outer'+name);
+    if(outer.style.height !== h) outer.style.height = h;
+    typeCharts[name] = drawBars(name.toLowerCase()+'Chart', typeCharts[name], entries, true);
+  });
+}
+
+function groupBy(rows, dimKey, all){
+  const groups = {};
+  rows.forEach(r=>{
+    const k = r[dimKey] || 'Sin asignar';
+    if(!groups[k]) groups[k]={reg:0,part:0};
+    groups[k].reg++;
+    if(r.participo) groups[k].part++;
+  });
+  if(all) return Object.entries(groups).sort((a,b)=>b[1].part-a[1].part || b[1].reg-a[1].reg);
+  return Object.entries(groups).sort((a,b)=>b[1].reg-a[1].reg).slice(0,15);
+}
+
+// Si la gráfica ya existe se actualiza en el lugar (sin destruirla ni animar);
+// solo se crea la primera vez. Así no hay parpadeo al refrescar.
+function drawBars(canvasId, existing, entries, horizontal){
+  const labels = entries.map(e=>e[0]);
+  const reg = entries.map(e=>e[1].reg);
+  const part = entries.map(e=>e[1].part);
+
+  if(existing){
+    const d = existing.data;
+    const same =
+      JSON.stringify(d.labels) === JSON.stringify(labels) &&
+      JSON.stringify(d.datasets[0].data) === JSON.stringify(reg) &&
+      JSON.stringify(d.datasets[1].data) === JSON.stringify(part);
+    if(!same){
+      d.labels = labels;
+      d.datasets[0].data = reg;
+      d.datasets[1].data = part;
+      existing.update('none');
+    }
+    return existing;
+  }
+
+  return new Chart(document.getElementById(canvasId), {
+    type:'bar',
+    data:{ labels: labels, datasets:[
+      {label: horizontal ? 'Personas a su cargo' : 'Registrados', data:reg, backgroundColor:'#2E5395', borderRadius:4, maxBarThickness:28},
+      {label:'Participaron', data:part, backgroundColor:'#D4A017', borderRadius:4, maxBarThickness:28},
+    ]},
+    options: horizontal ? {
+      indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ ticks:{autoSkip:false} } }
+    } : {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{ legend:{display:false} },
+      scales:{ y:{ beginAtZero:true, ticks:{precision:0} }, x:{ ticks:{autoSkip:false, maxRotation:45} } }
+    }
+  });
+}
+</script>
+</body>
+</html>
